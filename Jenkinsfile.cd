@@ -31,6 +31,7 @@ pipeline {
                                 --restart unless-stopped \
                                 -p 3000:3000 \
                                 -e NODE_ENV=production \
+                                -e PORT=3000 \
                                 ${BACKEND_IMAGE}:${params.IMAGE_TAG}
 
                             # Wait a few seconds to ensure it starts without crashing
@@ -45,7 +46,7 @@ pipeline {
         stage('Health Check') {
             steps {
                 retry(3) {
-                    sh "sleep 5 && curl -f http://${BACKEND_VM_IP}:3000 || exit 1"
+                    sh "sleep 5 && curl -f http://${BACKEND_VM_IP}:3000/api || exit 1"
                 }
             }
         }
