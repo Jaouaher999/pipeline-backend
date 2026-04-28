@@ -33,7 +33,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh """
-                        /opt/sonar-scanner/bin/sonar-scanner \
+                        ${tool 'SonarScanner'}/bin/sonar-scanner \
                           -Dsonar.projectKey=${SONAR_PROJECT_KEY}
                     """
                 }
