@@ -1,0 +1,59 @@
+pipeline {
+    agent {
+        label 'docker-agent' 
+    }
+
+    parameters {
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag to deploy')
+    }
+
+    environment {
+        BACKEND_IMAGE  = "yellowstar999/backend"
+        BACKEND_VM_IP  = "192.168.56.101"
+        DEPLOY_USER    = "user"
+    }
+
+    stages {
+        stage('Deploy Backend') {
+            steps {
+                sshagent(credentials: ['vm-backend-ssh']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${BACKEND_VM_IP} '
+                            docker pull ${BACKEND_IMAGE}:${params.IMAGE_TAG}
+
+                            # Gracefully stop and remove the old container if it exists
+                            docker stop backend 2>/dev/null || true
+                            docker rm   backend 2>/dev/null || true
+
+                            # Run the new container!
+                            docker run -d \
+                                --name backend \
+                                --restart unless-stopped \
+                                -p 3000:3000 \
+                                -e NODE_ENV=production \
+                                ${BACKEND_IMAGE}:${params.IMAGE_TAG}
+
+                            # Wait a few seconds to ensure it starts without crashing
+                            sleep 5
+                            docker ps --filter name=backend --format "{{.Status}}"
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                retry(3) {
+                    sh "sleep 5 && curl -f http://${BACKEND_VM_IP}:3000 || exit 1"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment complete! Backend running at: http://${BACKEND_VM_IP}:3000"
+        }
+    }
+}
