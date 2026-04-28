@@ -70,6 +70,13 @@ pipeline {
                 }
             }
         }
+
+        stage('Trigger CD') {
+            steps {
+                build job: 'backend-cd', wait: false,
+                      parameters: [string(name: 'IMAGE_TAG', value: "${DOCKER_TAG}")]
+            }
+        }
     }
 
     post {
